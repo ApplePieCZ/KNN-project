@@ -1,3 +1,8 @@
+# KNN project - Diffusion model
+# Script with Diffusion module and training loop
+# Modified by Lukas Marek
+# 18.4.2024
+
 import torch.nn as nn
 import argparse
 from torch import optim
@@ -34,7 +39,6 @@ class Diffusion:
         return torch.randint(low=1, high=self.noise_steps, size=(n,))
 
     def sample(self, model, n):
-        logging.info(f"Sampling {n} new images...")
         model.eval()
         with torch.no_grad():
             x = torch.randn((n, 3, self.image_size, self.image_size)).to(self.device)
@@ -90,33 +94,33 @@ def train(args):
         torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint.pt"))
 
 
-def sample(n):
-    device = "cuda"
+def sample(checkpoint, n, device, save):
     model = UNet().to(device)
-    ckpt = torch.load("./models/unconditional_ckpt.pt")
+    ckpt = torch.load(checkpoint)
     model.load_state_dict(ckpt)
     diffusion = Diffusion(image_size=64, device=device)
     sampled_images = diffusion.sample(model, n)
-    save_images(sampled_images, "results/test30.jpg")
+    if save != "":
+        save_images(sampled_images, save)
     plot_images(sampled_images)
 
 
-def launch(epochs):
+def launch(arguments):
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
     args.run_name = "Diffusion_model_training"
-    args.epochs = epochs
-    args.training_continue = True
-    args.epoch_continue = 401
+    args.epochs = arguments.epochs
+    if arguments.continue_epoch:
+        args.training_continue = True
+        args.epoch_continue = arguments.continue_epoch
     # 6 for RTX 3080, 10 for T4
-    args.batch_size = 6
+    args.batch_size = arguments.batch_size
     args.image_size = 64
-    args.dataset_path = r"C:\Users\lukas\PycharmProjects\KNN-project\datasets\Landscapes"
-    args.device = "cuda"
+    args.dataset_path = arguments.path
+    if arguments.cuda:
+        args.device = "cuda"
+    else:
+        args.device = "cpu"
     args.lr = 3e-4
-    train(args)
 
-
-if __name__ == '__main__':
-    launch(500)
-    # sample(16)
+    #train(args)
