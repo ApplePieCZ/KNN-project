@@ -5,13 +5,12 @@ from tqdm import tqdm
 from plot import *
 from model import UNet
 import logging
-from torch.utils.tensorboard import SummaryWriter
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO, datefmt="%I:%M:%S")
 
 
 class Diffusion:
-    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, image_size=64, device="cuda"):
+    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, image_size=256, device="cuda"):
         self.noise_steps = noise_steps
         self.beta_start = beta_start
         self.beta_end = beta_end
@@ -19,7 +18,7 @@ class Diffusion:
         self.device = device
 
         self.beta = self.prepare_noise_schedule().to(device)
-        self.alpha = 1 - self.beta
+        self.alpha = 1. - self.beta
         self.alpha_hat = torch.cumprod(self.alpha, dim=0)
 
     def prepare_noise_schedule(self):
@@ -27,11 +26,11 @@ class Diffusion:
 
     def noise_images(self, x, t):
         sqrt_alpha_hat = torch.sqrt(self.alpha_hat[t])[:, None, None, None]
-        sqrt_one_minus_alpha_hat = torch.sqrt(1. - self.alpha_hat[t])[:, None, None, None]
-        random_noise = torch.rand_like(x)
+        sqrt_one_minus_alpha_hat = torch.sqrt(1 - self.alpha_hat[t])[:, None, None, None]
+        random_noise = torch.randn_like(x)
         return sqrt_alpha_hat * x + sqrt_one_minus_alpha_hat * random_noise, random_noise
 
-    def sample_timesteps(self, n):
+    def sample_time_steps(self, n):
         return torch.randint(low=1, high=self.noise_steps, size=(n,))
 
     def sample(self, model, n):
@@ -45,13 +44,12 @@ class Diffusion:
                 alpha = self.alpha[t][:, None, None, None]
                 alpha_hat = self.alpha_hat[t][:, None, None, None]
                 beta = self.beta[t][:, None, None, None]
-                if i > 0:
-                    noise = torch.rand_like(x)
+                if i > 1:
+                    noise = torch.randn_like(x)
                 else:
                     noise = torch.zeros_like(x)
                 x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise)\
                     + torch.sqrt(beta) * noise
-
         model.train()
         x = (x.clamp(-1, 1) + 1) / 2
         x = (x * 255).type(torch.uint8)
@@ -63,18 +61,18 @@ def train(args):
     device = args.device
     dataloader = get_data(args)
     model = UNet().to(device)
+    if args.training_continue:
+        ckpt = torch.load("./models/Diffusion_model_training/checkpoint.pt")
+        model.load_state_dict(ckpt)
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
     mse = nn.MSELoss()
     diffusion = Diffusion(image_size=args.image_size, device=device)
-    logger = SummaryWriter(os.path.join("runs", args.run_name))
-    l = len(dataloader)
 
-    for epoch in range(args.epochs):
-        logging.info(f"Starting epoch {epoch}:")
+    for epoch in range(args.epoch_continue, args.epochs, 1):
         pbar = tqdm(dataloader)
         for i, (images, _) in enumerate(pbar):
             images = images.to(device)
-            t = diffusion.sample_timesteps(images.shape[0]).to(device)
+            t = diffusion.sample_time_steps(images.shape[0]).to(device)
             x_t, noise = diffusion.noise_images(images, t)
             predicted_noise = model(x_t, t)
             loss = mse(noise, predicted_noise)
@@ -83,26 +81,42 @@ def train(args):
             loss.backward()
             optimizer.step()
 
-            pbar.set_postfix(MSE=loss.item())
-            logger.add_scalar("MSE", loss.item(), global_step=epoch * l + i)
+            pbar.set_postfix(MSE=loss.item(), EPOCH=epoch)
 
-        sampled_images = diffusion.sample(model, n=images.shape[0])
-        save_images(sampled_images, os.path.join("results", args.run_name, f"{epoch}.jpg"))
-        torch.save(model.state_dict(), os.path.join("models", args.run_name, f"ckpt.pt"))
+        if epoch % 10 == 0 and epoch != 0:
+            sampled_images = diffusion.sample(model, n=images.shape[0])
+            save_images(sampled_images, os.path.join("results", args.run_name, f"epoch{epoch}.jpg"))
+            torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint{epoch}.pt"))
+        torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint.pt"))
 
 
-def launch():
-   parser = argparse.ArgumentParser()
-   args = parser.parse_args()
-   args.run_name = "DDPM_unconditional"
-   args.epochs = 100
-   args.batch_size = 12
-   args.image_size = 64
-   args.dataset_path = r"C:\Users\lukas\PycharmProjects\KNN-project\datasets\Landscapes"
-   args.device = "cuda"
-   args.lr = 3e-4
-   train(args)
+def sample(n):
+    device = "cuda"
+    model = UNet().to(device)
+    ckpt = torch.load("./models/unconditional_ckpt.pt")
+    model.load_state_dict(ckpt)
+    diffusion = Diffusion(image_size=64, device=device)
+    sampled_images = diffusion.sample(model, n)
+    save_images(sampled_images, "results/test30.jpg")
+    plot_images(sampled_images)
+
+
+def launch(epochs):
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+    args.run_name = "Diffusion_model_training"
+    args.epochs = epochs
+    args.training_continue = True
+    args.epoch_continue = 401
+    # 6 for RTX 3080, 10 for T4
+    args.batch_size = 6
+    args.image_size = 64
+    args.dataset_path = r"C:\Users\lukas\PycharmProjects\KNN-project\datasets\Landscapes"
+    args.device = "cuda"
+    args.lr = 3e-4
+    train(args)
 
 
 if __name__ == '__main__':
-    launch()
+    launch(500)
+    # sample(16)
