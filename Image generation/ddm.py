@@ -108,15 +108,18 @@ def sample(checkpoint, n, device, save):
 def launch(arguments):
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    args.run_name = "Diffusion_model_training"
+    args.run_name = arguments.name
     args.epochs = arguments.epochs
+
     if arguments.continue_epoch:
         args.training_continue = True
         args.epoch_continue = arguments.continue_epoch
+        
     # 6 for RTX 3080, 10 for T4
     args.batch_size = arguments.batch_size
     args.image_size = 64
     args.dataset_path = arguments.path
+
     if arguments.cuda:
         args.device = "cuda"
     else:
