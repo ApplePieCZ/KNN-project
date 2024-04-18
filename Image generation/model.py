@@ -4,7 +4,7 @@ import torch.nn.functional as func
 
 
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels=None, residual=None):
+    def __init__(self, in_channels, out_channels, mid_channels=None, residual=False):
         super().__init__()
         self.residual = residual
         if not mid_channels:
@@ -125,7 +125,7 @@ class UNet(nn.Module):
         inv_freq = 1.0 / (10000 ** (torch.arange(0, channels, 2, device=self.device).float() / channels))
         pos_enc_a = torch.sin(t.repeat(1, channels // 2) * inv_freq)
         pos_enc_b = torch.cos(t.repeat(1, channels // 2) * inv_freq)
-        pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=1)
+        pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)
         return pos_enc
 
     def forward(self, x, t):
