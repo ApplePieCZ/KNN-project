@@ -61,7 +61,7 @@ def train(args):
     setup_logging(args.run_name)
     device = args.device
     dataloader = get_data(args)
-    model = UNet().to(device)
+    model = UNet(image_size=args.image_size).to(device)
     starting_epoch = 0
     if args.training_continue:
         ckpt = torch.load(args.checkpoint)
@@ -86,15 +86,15 @@ def train(args):
 
             pbar.set_postfix(MSE=loss.item())
 
-        if epoch % 10 == 0 and epoch != 0:
+        if epoch % 25 == 0 and epoch != 0:
             sampled_images = diffusion.sample(model, n=images.shape[0])
             save_images(sampled_images, os.path.join("results", args.run_name, f"epoch{epoch}.jpg"))
             torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint{epoch}.pt"))
         torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint.pt"))
 
 
-def sample(checkpoint, n, device, save):
-    model = UNet().to(device)
+def sample(checkpoint, n, device, save, image_size):
+    model = UNet(image_size=image_size).to(device)
     ckpt = torch.load(checkpoint)
     model.load_state_dict(ckpt)
     diffusion = Diffusion(image_size=64, device=device)
@@ -113,7 +113,6 @@ def start_training(arguments):
     else:
         arguments.training_continue = False
 
-    arguments.image_size = 64
     arguments.lr = 3e-4
 
     if arguments.cuda:

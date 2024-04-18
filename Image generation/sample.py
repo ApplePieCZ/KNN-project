@@ -11,6 +11,7 @@ def create_parser():
 
     parser.add_argument("path", type=str, help="Path to the saved model dictionary (.pt)")
     parser.add_argument("images", type=int, help="Number of images to sample")
+    parser.add_argument("--image_size", type=int, help="Resolution of images", default=64)
     parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=True)
     parser.add_argument("--save", type=str, help="Save generated images with name")
 
@@ -29,6 +30,7 @@ if __name__ == '__main__':
     print("--- Sampling images ---")
     print("Model:", model)
     print("Number of images:", arguments.images)
+    print("Image size:", arguments.image_size)
 
     if arguments.cuda:
         device = "cuda"
@@ -40,4 +42,4 @@ if __name__ == '__main__':
     else:
         save = ""
 
-    sample(arguments.path, arguments.images, device, save)
+    sample(arguments.path, arguments.images, device, save, arguments.image_size)

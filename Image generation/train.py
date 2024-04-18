@@ -14,6 +14,7 @@ def create_parser():
     parser.add_argument("run_name", type=str, help="Name of the training run")
     parser.add_argument("--continue_training", nargs=2, metavar=("epoch", "checkpoint_file"),
                         help="Continue training from a checkpoint")
+    parser.add_argument("--image_size", type=int, help="Image size for training", default=64)
     parser.add_argument("--batch_size", type=int, help="Batch size for training", default=6)
     parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=True)
 
@@ -41,7 +42,7 @@ if __name__ == '__main__':
         check_model()
         print(f"--- Continuing training from epoch {continue_epoch} with checkpoint file {checkpoint_file} ---")
     else:
-        print("--- Starting fresh training ---")
+        print("--- Starting new training ---")
 
     if not os.path.exists(arguments.dataset_path):
         print(f"Dataset folder {arguments.dataset_path} does not exist.")
@@ -51,6 +52,7 @@ if __name__ == '__main__':
     print("Dataset:", dataset)
     print("Epochs:", arguments.epochs)
     print("Name:", arguments.run_name)
+    print("Image size:", arguments.image_size)
     print("Batch size:", arguments.batch_size)
     print("CUDA Enabled:", arguments.cuda)
     print("-------------------------------")
