@@ -9,9 +9,9 @@ from ddm import *
 def create_parser():
     parser = argparse.ArgumentParser(description="Parser for training script")
 
-    parser.add_argument("path", type=str, help="Path to the data")
+    parser.add_argument("dataset_path", type=str, help="Path to the data")
     parser.add_argument("epochs", type=int, help="Final epoch for training")
-    parser.add_argument("name", type=str, help="Name of the training run")
+    parser.add_argument("run_name", type=str, help="Name of the training run")
     parser.add_argument("--continue_training", nargs=2, metavar=("epoch", "checkpoint_file"),
                         help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, help="Batch size for training", default=6)
@@ -43,15 +43,16 @@ if __name__ == '__main__':
     else:
         print("--- Starting fresh training ---")
 
-    if not os.path.exists(arguments.path):
-        print(f"Dataset folder {arguments.path} does not exist.")
+    if not os.path.exists(arguments.dataset_path):
+        print(f"Dataset folder {arguments.dataset_path} does not exist.")
         exit(-1)
 
-    dataset = arguments.path.split("/")[-1]
+    dataset = arguments.dataset_path.split("/")[-1]
     print("Dataset:", dataset)
     print("Epochs:", arguments.epochs)
-    print("Name:", arguments.name)
+    print("Name:", arguments.run_name)
     print("Batch size:", arguments.batch_size)
     print("CUDA Enabled:", arguments.cuda)
+    print("-------------------------------")
 
-    launch(arguments)
+    start_training(arguments)

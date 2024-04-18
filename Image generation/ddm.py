@@ -9,9 +9,6 @@ from torch import optim
 from tqdm import tqdm
 from plot import *
 from model import UNet
-import logging
-
-logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO, datefmt="%I:%M:%S")
 
 
 class Diffusion:
@@ -42,7 +39,7 @@ class Diffusion:
         model.eval()
         with torch.no_grad():
             x = torch.randn((n, 3, self.image_size, self.image_size)).to(self.device)
-            for i in tqdm(reversed(range(1, self.noise_steps)), position=0):
+            for i in tqdm(reversed(range(1, self.noise_steps)), total=999, colour="green"):
                 t = (torch.ones(n) * i).long().to(self.device)
                 predicted_noise = model(x, t)
                 alpha = self.alpha[t][:, None, None, None]
@@ -65,15 +62,17 @@ def train(args):
     device = args.device
     dataloader = get_data(args)
     model = UNet().to(device)
+    starting_epoch = 0
     if args.training_continue:
-        ckpt = torch.load("./models/Diffusion_model_training/checkpoint.pt")
+        ckpt = torch.load(args.checkpoint)
         model.load_state_dict(ckpt)
+        starting_epoch = args.epoch_continue
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
     mse = nn.MSELoss()
     diffusion = Diffusion(image_size=args.image_size, device=device)
 
-    for epoch in range(args.epoch_continue, args.epochs, 1):
-        pbar = tqdm(dataloader)
+    for epoch in range(starting_epoch, args.epochs, 1):
+        pbar = tqdm(dataloader, desc=f"Epoch {epoch}", colour="green")
         for i, (images, _) in enumerate(pbar):
             images = images.to(device)
             t = diffusion.sample_time_steps(images.shape[0]).to(device)
@@ -85,7 +84,7 @@ def train(args):
             loss.backward()
             optimizer.step()
 
-            pbar.set_postfix(MSE=loss.item(), EPOCH=epoch)
+            pbar.set_postfix(MSE=loss.item())
 
         if epoch % 10 == 0 and epoch != 0:
             sampled_images = diffusion.sample(model, n=images.shape[0])
@@ -105,25 +104,21 @@ def sample(checkpoint, n, device, save):
     plot_images(sampled_images)
 
 
-def launch(arguments):
-    parser = argparse.ArgumentParser()
-    args = parser.parse_args()
-    args.run_name = arguments.name
-    args.epochs = arguments.epochs
+def start_training(arguments):
+    if arguments.continue_training:
+        arguments.training_continue = True
+        continue_epoch, checkpoint_file = arguments.continue_training
+        arguments.epoch_continue = continue_epoch
+        arguments.checkpoint = checkpoint_file
+    else:
+        arguments.training_continue = False
 
-    if arguments.continue_epoch:
-        args.training_continue = True
-        args.epoch_continue = arguments.continue_epoch
-        
-    # 6 for RTX 3080, 10 for T4
-    args.batch_size = arguments.batch_size
-    args.image_size = 64
-    args.dataset_path = arguments.path
+    arguments.image_size = 64
+    arguments.lr = 3e-4
 
     if arguments.cuda:
-        args.device = "cuda"
+        arguments.device = "cuda"
     else:
-        args.device = "cpu"
-    args.lr = 3e-4
+        arguments.device = "cpu"
 
-    #train(args)
+    train(arguments)
