@@ -12,9 +12,10 @@ Project is divided into 2 parts:
 Image generation is achieved using Denoising Diffusion model. Unconditional on Landscape dataset and conditional on CIFAR10 dataset. Solution is based on
 [paper](https://arxiv.org/pdf/2006.11239.pdf) and [baseline solution](https://github.com/dome272/Diffusion-Models-pytorch). Improvements to make:
   - [x] More user-friendly to use
-  - [ ] Automatically find best batch-size for training
-  - [ ] Bigger image size 128x128
-  - [ ] Image size 256x256 on MNIST dataset
+  - [ ] Landscape 128x128 training
+  - [ ] Cifar10 64x64 training
+  - [ ] Simple GUI
+  - [x] Add option to change image resolution
   - [x] Add option to continue training from checkpoint
 
 Training can be launched with following command:
