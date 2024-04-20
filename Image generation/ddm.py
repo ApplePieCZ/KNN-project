@@ -12,7 +12,7 @@ from model import UNet
 
 
 class Diffusion:
-    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, image_size=256, device="cuda"):
+    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, image_size=128, device="cuda"):
         self.noise_steps = noise_steps
         self.beta_start = beta_start
         self.beta_end = beta_end
@@ -66,7 +66,7 @@ def train(args):
     if args.training_continue:
         ckpt = torch.load(args.checkpoint)
         model.load_state_dict(ckpt)
-        starting_epoch = args.epoch_continue
+        starting_epoch = int(args.epoch_continue)
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
     mse = nn.MSELoss()
     diffusion = Diffusion(image_size=args.image_size, device=device)
@@ -97,7 +97,7 @@ def sample(checkpoint, n, device, save, image_size):
     model = UNet(image_size=image_size).to(device)
     ckpt = torch.load(checkpoint)
     model.load_state_dict(ckpt)
-    diffusion = Diffusion(image_size=64, device=device)
+    diffusion = Diffusion(image_size=image_size, device=device)
     sampled_images = diffusion.sample(model, n)
     if save != "":
         save_images(sampled_images, save)
