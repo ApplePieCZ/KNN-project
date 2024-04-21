@@ -3,7 +3,9 @@
 # Created by Lukas Marek
 # 18.4.2024
 
-from ddm import *
+import os
+import argparse
+from ddm import sample, inpaint
 
 
 def create_parser():
@@ -12,8 +14,9 @@ def create_parser():
     parser.add_argument("path", type=str, help="Path to the saved model dictionary (.pt)")
     parser.add_argument("images", type=int, help="Number of images to sample")
     parser.add_argument("--image_size", type=int, help="Resolution of images", default=64)
-    parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=True)
+    parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=False)
     parser.add_argument("--save", type=str, help="Save generated images with name")
+    parser.add_argument("--inpainting", nargs=2, type=str, help="Image and mask for inpainting")
 
     return parser
 
@@ -27,10 +30,6 @@ if __name__ == '__main__':
         exit(-1)
 
     model = arguments.path.split("/")[-1]
-    print("--- Sampling images ---")
-    print("Model:", model)
-    print("Number of images:", arguments.images)
-    print("Image size:", arguments.image_size)
 
     if arguments.cuda:
         device = "cuda"
@@ -41,5 +40,18 @@ if __name__ == '__main__':
         save = arguments.save
     else:
         save = ""
-
-    sample(arguments.path, arguments.images, device, save, arguments.image_size)
+    if not arguments.inpainting:
+        print("--- Sampling images ---")
+        print("Model:", model)
+        print("Number of images:", arguments.images)
+        print("Image size:", arguments.image_size)
+        sample(arguments.path, arguments.images, device, save, arguments.image_size)
+    else:
+        print("--- Inpainting images ---")
+        print("Model:", model)
+        print("Number of images:", arguments.images)
+        print("Image size:", arguments.image_size)
+        print("Image for inpainting:", arguments.inpainting[0])
+        print("Mask for inpainting:", arguments.inpainting[1])
+        inpaint(arguments.path, arguments.images, device, save, arguments.image_size,
+                arguments.inpainting[0], arguments.inpainting[1])

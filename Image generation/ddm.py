@@ -1,14 +1,17 @@
 # KNN project - Diffusion model
 # Script with Diffusion module and training loop
-# Modified by Lukas Marek
+# Modified by Lukas Marek and Tomas Krsicka
 # 18.4.2024
 
+import os
+import torch
 import torch.nn as nn
-import argparse
+import torchvision
 from torch import optim
 from tqdm import tqdm
-from plot import *
+from plot import save_images, plot_images, get_data, setup_logging
 from model import UNet
+from PIL import Image
 
 
 class Diffusion:
@@ -42,15 +45,64 @@ class Diffusion:
             for i in tqdm(reversed(range(1, self.noise_steps)), total=999, colour="green"):
                 t = (torch.ones(n) * i).long().to(self.device)
                 predicted_noise = model(x, t)
+
                 alpha = self.alpha[t][:, None, None, None]
                 alpha_hat = self.alpha_hat[t][:, None, None, None]
                 beta = self.beta[t][:, None, None, None]
+
                 if i > 1:
                     noise = torch.randn_like(x)
                 else:
                     noise = torch.zeros_like(x)
+
                 x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise)\
                     + torch.sqrt(beta) * noise
+
+        model.train()
+        x = (x.clamp(-1, 1) + 1) / 2
+        x = (x * 255).type(torch.uint8)
+        return x
+
+    def inpainting(self, model, n, image_path, mask_path):
+        transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((64, 64)),
+            torchvision.transforms.ToTensor(),
+        ])
+        transforms = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((64, 64)),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        image = Image.open(image_path).convert("RGB")
+        mask = Image.open(mask_path).convert("RGB")
+
+        image_tensor = transforms(image).unsqueeze(0).to("cuda")
+        mask_tensor = transform(mask).unsqueeze(0).to("cuda")
+        mask_tensor = (1 - mask_tensor)
+
+        model.eval()
+        with torch.no_grad():
+            x = torch.randn((n, 3, self.image_size, self.image_size)).to(self.device)
+            for i in tqdm(reversed(range(2, self.noise_steps)), total=999, colour="green"):
+                noised = self.noise_images(image_tensor, torch.tensor([i]))[0]
+                x = x * mask_tensor + noised.to("cuda") * (1 - mask_tensor)
+
+                t = (torch.ones(n) * i).long().to(self.device)
+                alpha = self.alpha[t][:, None, None, None]
+                alpha_hat = self.alpha_hat[t][:, None, None, None]
+                beta = self.beta[t][:, None, None, None]
+
+                predicted_noise = model(x, t)
+
+                if i > 1:
+                    noise = torch.randn_like(x)
+                else:
+                    noise = torch.zeros_like(x)
+
+                x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise) \
+                    + torch.sqrt(beta) * noise
+
         model.train()
         x = (x.clamp(-1, 1) + 1) / 2
         x = (x * 255).type(torch.uint8)
@@ -102,6 +154,17 @@ def sample(checkpoint, n, device, save, image_size):
     if save != "":
         save_images(sampled_images, save)
     plot_images(sampled_images)
+
+
+def inpaint(checkpoint, n, device, save, image_size, image, mask):
+    model = UNet(image_size=image_size).to(device)
+    ckpt = torch.load(checkpoint)
+    model.load_state_dict(ckpt)
+    diffusion = Diffusion(image_size=image_size, device=device)
+    inpainted_images = diffusion.inpainting(model, n, image, mask)
+    if save != "":
+        save_images(inpainted_images, save)
+    plot_images(inpainted_images)
 
 
 def start_training(arguments):
