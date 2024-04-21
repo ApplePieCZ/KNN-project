@@ -123,7 +123,7 @@ def train(args):
     mse = nn.MSELoss()
     diffusion = Diffusion(image_size=args.image_size, device=device)
 
-    for epoch in range(starting_epoch, args.epochs, 1):
+    for epoch in range(starting_epoch, starting_epoch + args.epochs, 1):
         pbar = tqdm(dataloader, desc=f"Epoch {epoch}", colour="green")
         for i, (images, _) in enumerate(pbar):
             images = images.to(device)
@@ -138,7 +138,7 @@ def train(args):
 
             pbar.set_postfix(MSE=loss.item())
 
-        if epoch % 25 == 0 and epoch != 0:
+        if epoch % args.save_epoch == 0 and epoch != 0:
             sampled_images = diffusion.sample(model, n=images.shape[0])
             save_images(sampled_images, os.path.join("results", args.run_name, f"epoch{epoch}.jpg"))
             torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint{epoch}.pt"))
