@@ -3,7 +3,9 @@
 # Created by Lukas Marek
 # 18.4.2024
 
-from ddm import *
+import os
+import argparse
+from ddm import start_training
 
 
 def create_parser():
@@ -16,7 +18,8 @@ def create_parser():
                         help="Continue training from a checkpoint")
     parser.add_argument("--image_size", type=int, help="Image size for training", default=64)
     parser.add_argument("--batch_size", type=int, help="Batch size for training", default=6)
-    parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=True)
+    parser.add_argument("--save_epoch", type=int, help="Batch size for training", default=25)
+    parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=False)
 
     return parser
 
@@ -54,6 +57,7 @@ if __name__ == '__main__':
     print("Name:", arguments.run_name)
     print("Image size:", arguments.image_size)
     print("Batch size:", arguments.batch_size)
+    print("Save epoch:", arguments.save_epoch)
     print("CUDA Enabled:", arguments.cuda)
     print("-------------------------------")
 
