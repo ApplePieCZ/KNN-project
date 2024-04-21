@@ -12,17 +12,32 @@ Image generation is achieved using Denoising Diffusion model. Unconditional mode
   - [x] Unconditional inpainting
   - [ ] Conditional inpainting
 
-### Setup
+### Training
+Training saves model every epoch as **checkpoint.pt**. It is also possible to save and sample each n-th epoch, results are saved as **sample{epoch}.jpg** and **checkpoint{epoch}.pt**.
+All checkpoints are saved in corresponding folders - models and results under name of run.
 
 Training can be launched with following command:
 
-    $ python3 train.py <path to dataset> <epochs> <name of run> --continue_training <starting epoch> <checkpoint file> --batch_size <images in batch> --cuda
+    $ python3 train.py <path to dataset> <epochs> <name of run> 
+
+Possible additional arguments:
+- --continue_training <starting epoch\> <checkpoint file\> - From which epoch you want to train (it only looks better) and checkpoint from which you want.
+- --image_size <resolution in px\> - Resolution of images for training, must be powers of 2 (32, 64, 128...). **Default is 64**
+- --batch_size <images in batch\> - Number of images in batch. For GPUs with more memory bigger batch is better. **Default is 6** (for 10GB and 64x64)
+- --save_epoch <n\> - Each n-th epoch it will save checkpoints as mentioned previously. **Default is 25**
+- --cuda - Use GPU instead CPU. **Default is CPU**. Only use when CUDA is available!
+
+### Sampling
 
 Sampling with following command:
 
-    $ python3 sample.py <path to model> <number of images> --cuda --save <name of saved images>
+    $ python3 sample.py <path to model> 
 
-- Cuda argument sets device to cuda for GPU acceleration, default is cpu
+Possible additional arguments:
+- --images <n\> - number of images to be sampled. **Default is 8**
+- --image_size <resolution in px\> - Resolution of images for sampling, can be bigger size that what model was trained on, but results will be undefined. **Default is 64**
+- --cuda - Use GPU instead CPU. **Default is CPU**. Only use when CUDA is available!
+- --save <name.jpg\> - To save generated images to name.jpg.
 
 ### Results
 
@@ -38,7 +53,9 @@ Inpainting was implemented on:
 
 Inpainting on our model can be run with following command:
 
-    $ python3 sample.py <path to model> <number of images> --cuda --save <name of saved images> --inpainting <path to image> <path to mask>
+    $ python3 sample.py <path to model> --inpainting <path to image> <path to mask>
+
+All other arguments are same as before.
 
 Mask doesn't have to be the same size as image, but it should have the same aspect ratio for it to work properly.
 
