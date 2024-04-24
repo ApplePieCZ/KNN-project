@@ -62,11 +62,12 @@ Model for Landscapes was trained with following settings:
 
 Training run for 750 epochs, on RTX 3080 10GB that took 1:40 minutes per epoch, so around 21 hours.
 
+<p align="center">
 <img src="Visuals/image.gif" width="50%" >
 
 
 <img src="Visuals/landscapes.jpg" width="50%" >
-
+</p>
 
 Model for Cifar10 was trained with following settings:
 - Image size 32x32
@@ -74,11 +75,12 @@ Model for Cifar10 was trained with following settings:
 
 Because of the hardware limitations Cifar10 was trained on 32x32 dataset instead of 64x64. Training run for 475 epochs, on RTX 3080 10GB that took 2:20 minutes per epoch, so around 19 hours.
 
+<p align="center">
 <img src="Visuals/cifar.gif" width="50%" >
 
 
 <img src="Visuals/cifar.jpg" width="50%" >
-
+</p>
 
 
 
@@ -118,49 +120,65 @@ Other arguments are the same as for sampling with DiT.
 
 Inpainting with resampling on Landscapes works perfectly. For example to remove this pier. Basic inpaint fails terribly, but resample makes final image look really convincing.
 
+<p align="center">
 <img src="Visuals/landscapeinpaint.png" width="50%" >
+</p>
 
 Inpainting on Cifar datatset works too, but on such small resolution it is pointless. Example instead of pier, inpaint car.
 
+<p align="center">
 <img src="Visuals/inpaint.jpg" width="50%" >
+</p>
 
 However, on **DiT**, which produces images up to 512x512, it was much clearer to see the difference. **DiT** is trained on ImageNet, so it supports up to 1000 classes.
 First example is golden retriever. Mask is applied mainly on his nose.
-<p>
+
+<p align="center">
 <img src="Visuals/gold.png" width="49%">
 <img src="Visuals/maskedgold.png" width="49%">
 </p>
+
 Setting **DiT** to inpaint class 207 (golden retriever) with no resampling results in this:
-
+<p align="center">
 <img src="Visuals/dogInpaint.png" width="50%">
-
+</p>
 With enabled resampling the result is much better. Resample steps are 1, 3 and 4.
-<p>
+
+<p align="center">
 <img src="Visuals/sampleRe1.png" width="32%">
 <img src="Visuals/sampleRe3.png" width="32%">
 <img src="Visuals/sampleRe4.png" width="32%">
 </p>
+
 Because **DiT** works in latent space there is no need for lot of resamoling steps. 3-4 are best.
 
 On the other hand there are examples where basic inpainting is better. Like this hamster:
-<p>
+
+<p align="center">
 <img src="Visuals/Hamster.png" width="49%">
 <img src="Visuals/hamstermasked.png" width="49%">
 </p>
+
 Clean inpaint, resample with step 1 and resample with step 3:
-<p>
+
+<p align="center">
 <img src="Visuals/inpaintBear.png" width="32%">
 <img src="Visuals/inpainthamster1.png" width="32%">
 <img src="Visuals/inpainthamster.png" width="32%">
 </p>
+
 Or **DiT** inpaint can be used to add new objects.
-<p>
+
+<p align="center">
 <img src="Visuals/nature.png" width="32%">
 <img src="Visuals/naturemasked.png" width="32%">
 <img src="Visuals/inpaintbear2.png" width="32%">
 </p>
+
 And replace existing ones.
-<p>
-<img src="Visuals/sealion99.png" width="49%">
-<img src="Visuals/sampleGoldfish.png" width="49%">
+
+<p align="center">
+<img src="Visuals/sealion99.png" width="32%">
+<img src="Visuals/seamask.png" width="32%">
+<img src="Visuals/sampleGoldfish.png" width="32%">
 </p>
