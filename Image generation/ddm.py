@@ -30,14 +30,14 @@ class Diffusion:
 
     def prepare_noise_schedule(self):
         """
-        Function prepares array of betas for all noise steps
+        Prepare array of betas for all noise steps
         :return: Tensor of 1D array
         """
         return torch.linspace(self.beta_start, self.beta_end, self.noise_steps)
 
     def noise_images(self, x, t):
         """
-        Function takes given image (x) and applies noise equivalent to t steps
+        Take given image (x) and apply noise equivalent to t number of steps
         :param x: Input image
         :param t: Timesteps
         :return: Noised image and noise that was used
@@ -49,7 +49,7 @@ class Diffusion:
 
     def noise_step(self, x, t):
         """
-        Function takes given image (x) and applies noise equivalent to one step so input should be x(t-1)
+        Take given image (x) and applies noise equivalent to one step
         and output is x(t)
         :param x: Image to be noised
         :param t: Timestep of noise that it should apply
@@ -61,7 +61,7 @@ class Diffusion:
 
     def sample_time_steps(self, n):
         """
-        Function generates random numbers from 1 to noise_steps for each image to be sampled n
+        Generate random numbers from 1 to noise_steps for each image to be sampled
         :param n: Number of images to be sampled
         :return: Tensor with array of random numbers
         """
@@ -69,7 +69,7 @@ class Diffusion:
 
     def sample(self, model, n):
         """
-        Function samples n images with chosen model, sampling is completely unconditional
+        Sample n images with chosen model, unconditional model is expected
         :param model: Model that will be used for sampling
         :param n: Number of images to be sampled
         :return: Returns sampled images as tensors
@@ -99,6 +99,14 @@ class Diffusion:
         return x
 
     def sample_conditional(self, model, n, labels, cfg_scale=3):
+        """
+        Sample n images with chosen model, conditional model is expected
+        :param model: Model that will be used for sampling
+        :param n: Number of images to be sampled
+        :param labels: Number of labels
+        :param cfg_scale: Sets how strong CFG is
+        :return: Returns sampled images as tensors
+        """
         model.eval()
         with torch.no_grad():
             x = torch.randn((n, 3, self.image_size, self.image_size)).to(self.device)
@@ -128,7 +136,7 @@ class Diffusion:
 
     def inpainting(self, model, n, image_path, mask_path):
         """
-        Function inpaints selected image in specific mask
+        Inpaint selected image with specified mask
         :param model: Model used for sampling
         :param n: Number of inpainted images
         :param image_path: Path to image that will be inpainted
@@ -182,6 +190,16 @@ class Diffusion:
         return x
 
     def inpaint_conditional(self, model, n, labels, image_path, mask_path, cfg_scale=3):
+        """
+        Inpaint selected image with specified mask
+        :param model: Model used for sampling
+        :param n: Number of inpainted images
+        :param labels: Number of labels
+        :param image_path: Path to image that will be inpainted
+        :param mask_path: Path to inpainting mask
+        :param cfg_scale: Sets how strong CFG is
+        :return: Inpainted images as tensors
+        """
         transform = torchvision.transforms.Compose([
             torchvision.transforms.Resize((32, 32)),
             torchvision.transforms.ToTensor(),
@@ -233,7 +251,7 @@ class Diffusion:
 
 def train(args):
     """
-    Function trains model on selected dataset and saves learned model every epoch
+    Train model on selected dataset and save learned model every epoch
     :param args: Input arguments for training (all are described in train.py)
     """
     setup_logging(args.run_name)
@@ -254,7 +272,7 @@ def train(args):
         pbar = tqdm(dataloader, desc=f"Epoch {epoch}", colour="green")
         for i, (images, _) in enumerate(pbar):
             images = images.to(args.device)
-            t = diffusion.sample_time_steps(images.shape[0]).to(args.devicev)
+            t = diffusion.sample_time_steps(images.shape[0]).to(args.device)
             x_t, noise = diffusion.noise_images(images, t)
             predicted_noise = model(x_t, t)
             loss = mse(noise, predicted_noise)
@@ -273,6 +291,10 @@ def train(args):
 
 
 def train_conditional(args):
+    """
+    Train model on selected dataset and save learned model every epoch
+    :param args: Input arguments for training (all are described in train.py)
+    """
     setup_logging(args.run_name)
     device = args.device
     dataloader = get_data(args)
@@ -327,7 +349,7 @@ def train_conditional(args):
 
 def sample(model_dict, n, device, save, image_size):
     """
-    Function prepares all necessities for sampling, launch sampling and plots results
+    Preparee all necessities for sampling, launch sampling and plot results
     :param model_dict: Model dictionary to be used for sampling
     :param n: Number of images for sampling
     :param device: Device where sampling will run (either CUDA or CPU)
@@ -346,7 +368,7 @@ def sample(model_dict, n, device, save, image_size):
 
 def sample_conditional(arguments):
     """
-    Function prepares all necessities for conditional sampling, launch it and plots results
+    Prepare all necessities for conditional sampling, launch it and plot results
     :param arguments: All necessary arguments are described in sample_cond.py
     """
     model = UNetConditional(num_classes=arguments.classes, image_size=arguments.image_size).to(arguments.device)
@@ -366,7 +388,7 @@ def sample_conditional(arguments):
 
 def inpaint(model_dict, n, device, save, image_size, image, mask):
     """
-    Function prepares all necessities for inpainting, launch it and plots results
+    Prepare all necessities for inpainting, launch it and plot results
     :param model_dict: Model dictionary to be used for sampling
     :param n: Number of images for sampling
     :param device: Device where sampling will run (either CUDA or CPU)
@@ -387,7 +409,7 @@ def inpaint(model_dict, n, device, save, image_size, image, mask):
 
 def inpaint_conditional(arguments):
     """
-    Function prepares all necessities for conditional inpainting, launch it and plots results
+    Prepare all necessities for conditional inpainting, launch it and plot results
     :param arguments: All necessary arguments are described in sample_cond.py
     """
     model = UNetConditional(num_classes=arguments.classes, image_size=arguments.image_size).to(arguments.device)
@@ -409,7 +431,7 @@ def inpaint_conditional(arguments):
 
 def start_training(arguments):
     """
-    Function sets few additional arguments for training and launches training loop
+    Set few additional arguments for training and launch training loop
     :param arguments: Arguments for training (described in train.py)
     """
     if arguments.continue_training:
@@ -432,7 +454,7 @@ def start_training(arguments):
 
 def start_training_conditional(arguments):
     """
-    Function sets few additional arguments for conditional training and launches training loop
+    Set few additional arguments for conditional training and launch training loop
     :param arguments: Arguments for training (described in train.py)
     """
     if arguments.continue_training:
