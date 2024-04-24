@@ -135,23 +135,23 @@ Setting **DiT** to inpaint class 207 (golden retriever) with no resampling resul
 <img src="Visuals/dogInpaint.png" width="50%">
 
 With enabled resampling the result is much better. Resample steps are 1, 3 and 4.
-
+<p>
 <img src="Visuals/sampleRe1.png" width="32%">
 <img src="Visuals/sampleRe3.png" width="32%">
 <img src="Visuals/sampleRe4.png" width="32%">
-
+</p>
 Because **DiT** works in latent space there is no need for lot of resamoling steps. 3-4 are best.
 
 On the other hand there are examples where basic inpainting is better. Like this hamster:
 
-<img src="Visuals/hamster.png" width="49%">
+<img src="Visuals/Hamster.png" width="49%">
 <img src="Visuals/hamstermasked.png" width="49%">
 
 Clean inpaint, resample with step 1 and resample with step 3:
 
 <img src="Visuals/inpaintBear.png" width="32%">
-<img src="Visuals/inpaintHamster1.png" width="32%">
-<img src="Visuals/inpaintHamster.png" width="32%">
+<img src="Visuals/inpainthamster1.png" width="32%">
+<img src="Visuals/inpainthamster.png" width="32%">
 
 Or **DiT** inpaint can be used to add new objects.
 
