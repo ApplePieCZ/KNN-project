@@ -13,6 +13,7 @@ Image generation is achieved using Denoising Diffusion model. Unconditional mode
   - [x] Implement resampling
 
 ### Training
+***
 Training saves model every epoch as **checkpoint.pt**. It is also possible to save and sample each n-th epoch, results are saved as **sample{epoch}.jpg** and **checkpoint{epoch}.pt**.
 All checkpoints are saved in corresponding folders - models and results under name of run.
 
@@ -31,6 +32,7 @@ For training conditional model add following argument:
 - --conditional <number of classes\>
 
 ### Sampling
+***
 
 Unconditional Sampling with following command:
 
@@ -53,6 +55,34 @@ Possible additional arguments:
 - --save <name.jpg\> - To save generated images to name.jpg.
 
 ### Results
+***
+Model for Landscapes was trained with following settings:
+- Image size 64x64
+- Batch size 6 images
+
+Training run for 750 epochs, on RTX 3080 10GB that took 1:40 minutes per epoch, so around 21 hours.
+
+<img src="Visuals/image.gif" width="50%" >
+
+
+<img src="Visuals/landscapes.jpg" width="50%" >
+
+
+Model for Cifar10 was trained with following settings:
+- Image size 32x32
+- Batch size 32 images
+
+Because of the hardware limitations Cifar10 was trained on 32x32 dataset instead of 64x64. Training run for 475 epochs, on RTX 3080 10GB that took 2:20 minutes per epoch, so around 19 hours.
+
+<img src="Visuals/cifar.gif" width="50%" >
+
+
+<img src="Visuals/cifar.jpg" width="50%" >
+
+
+
+
+
 
 ## Inpainting
 
@@ -77,4 +107,59 @@ All other arguments are same as before.
 
 Mask doesn't have to be the same size as image, but it should have the same aspect ratio for it to work properly.
 
+On DiT, first make sure basic sampling works. Then inpainting can be used with following command:
+
+    $ python3 inpaint.py <path to image> <path to mask> <class to inpaint>
+
+Other arguments are the same as for sampling with DiT.
+
 ### Results
+***
+
+Inpainting with resampling on Landscapes works perfectly. For example to remove this pier. Basic inpaint fails terribly, but resample makes final image look really convincing.
+
+<img src="Visuals/landscapeinpaint.png" width="50%" >
+
+Inpainting on Cifar datatset works too, but on such small resolution it is pointless. Example instead of pier, inpaint car.
+
+<img src="Visuals/inpaint.jpg" width="50%" >
+
+However, on **DiT**, which produces images up to 512x512, it was much clearer to see the difference. **DiT** is trained on ImageNet, so it supports up to 1000 classes.
+First example is golden retriever. Mask is applied mainly on his nose.
+
+<img src="Visuals/gold.png" width="49%">
+<img src="Visuals/maskedgold.png" width="49%">
+
+Setting **DiT** to inpaint class 207 (golden retriever) with no resampling results in this:
+
+<img src="Visuals/dogInpaint.png" width="50%">
+
+With enabled resampling the result is much better. Resample steps are 1, 3 and 4.
+
+<img src="Visuals/sampleRe1.png" width="32%">
+<img src="Visuals/sampleRe3.png" width="32%">
+<img src="Visuals/sampleRe4.png" width="32%">
+
+Because **DiT** works in latent space there is no need for lot of resamoling steps. 3-4 are best.
+
+On the other hand there are examples where basic inpainting is better. Like this hamster:
+
+<img src="Visuals/hamster.png" width="49%">
+<img src="Visuals/hamstermasked.png" width="49%">
+
+Clean inpaint, resample with step 1 and resample with step 3:
+
+<img src="Visuals/inpaintBear.png" width="32%">
+<img src="Visuals/inpaintHamster1.png" width="32%">
+<img src="Visuals/inpaintHamster.png" width="32%">
+
+Or **DiT** inpaint can be used to add new objects.
+
+<img src="Visuals/nature.png" width="32%">
+<img src="Visuals/naturemasked.png" width="32%">
+<img src="Visuals/inpaintbear2.png" width="32%">
+
+And replace existing ones.
+
+<img src="Visuals/sealion99.png" width="49%">
+<img src="Visuals/sampleGoldfish.png" width="49%">
