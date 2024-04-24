@@ -6,11 +6,11 @@ Project about image generating and inpainting using diffusion models.
 Image generation is achieved using Denoising Diffusion model. Unconditional model was trained on Landscape dataset and conditional on CIFAR10 dataset. Solution is based on
 [paper](https://arxiv.org/pdf/2006.11239.pdf) and [baseline solution](https://github.com/dome272/Diffusion-Models-pytorch). Improvements to make:
   - [x] More user-friendly to use
-  - [ ] Simple GUI
   - [x] Add option to change image resolution
   - [x] Add option to continue training from checkpoint
   - [x] Unconditional inpainting
-  - [ ] Conditional inpainting
+  - [x] Conditional inpainting
+  - [x] Implement resampling
 
 ### Training
 Training saves model every epoch as **checkpoint.pt**. It is also possible to save and sample each n-th epoch, results are saved as **sample{epoch}.jpg** and **checkpoint{epoch}.pt**.
@@ -27,9 +27,12 @@ Possible additional arguments:
 - --save_epoch <n\> - Each n-th epoch it will save checkpoints as mentioned previously. **Default is 25**
 - --cuda - Use GPU instead CPU. **Default is CPU**. Only use when CUDA is available!
 
+For training conditional model add following argument:
+- --conditional <number of classes\>
+
 ### Sampling
 
-Sampling with following command:
+Unconditional Sampling with following command:
 
     $ python3 sample.py <path to model> 
 
@@ -39,21 +42,36 @@ Possible additional arguments:
 - --cuda - Use GPU instead CPU. **Default is CPU**. Only use when CUDA is available!
 - --save <name.jpg\> - To save generated images to name.jpg.
 
+Conditional Sampling with following command:
+
+    $ python3 sample_cond.py <path to model> <number of classes>
+
+Possible additional arguments:
+- --images <n\> <c\> - number of **n** images to be sampled for class **c**.
+- --image_size <resolution in px\> - Resolution of images for sampling, can be bigger size that what model was trained on, but results will be undefined. **Default is 32**
+- --cuda - Use GPU instead CPU. **Default is CPU**. Only use when CUDA is available!
+- --save <name.jpg\> - To save generated images to name.jpg.
+
 ### Results
 
 ## Inpainting
 
-We implemented inpainting post condition inpainting solution based on this 
-[paper](https://openaccess.thecvf.com/content/WACV2024/papers/Corneanu_LatentPaint_Image_Inpainting_in_Latent_Space_With_Diffusion_Models_WACV_2024_paper.pdf).
+We implemented inpainting post condition inpainting solution with resampling based on this 
+[paper](https://arxiv.org/pdf/2201.09865.pdf).
 
-Inpainting was implemented on:
-- [x] Our Diffusion model
+Inpainting with resampling was implemented on:
+- [x] Our Denoising Diffusion model
 - [x] [DiT](https://github.com/facebookresearch/DiT)
-- [ ] Stable diffusion
 
 Inpainting on our model can be run with following command:
 
     $ python3 sample.py <path to model> --inpainting <path to image> <path to mask>
+
+All other arguments are same as before.
+
+For inpainting on conditional model:
+
+    $ python3 sample_cond.py <path to model> --inpainting <path to image> <path to mask>
 
 All other arguments are same as before.
 
