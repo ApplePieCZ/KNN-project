@@ -4,13 +4,15 @@
 # 24.4.2024
 
 import os
+import copy
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision
 from torch import optim
 from tqdm import tqdm
 from plot import save_images, plot_images, get_data, setup_logging
-from model import UNet
+from model import UNet, UNetConditional, EMA
 from PIL import Image
 
 
@@ -96,6 +98,34 @@ class Diffusion:
         x = (x * 255).type(torch.uint8)
         return x
 
+    def sample_conditional(self, model, n, labels, cfg_scale=3):
+        model.eval()
+        with torch.no_grad():
+            x = torch.randn((n, 3, self.image_size, self.image_size)).to(self.device)
+            for i in tqdm(reversed(range(0, self.noise_steps)), total=1000, position=0):
+                t = (torch.ones(n) * i).long().to(self.device)
+                predicted_noise = model(x, t, labels)
+
+                if cfg_scale > 0:
+                    uncond_predicted_noise = model(x, t, None)
+                    predicted_noise = torch.lerp(uncond_predicted_noise, predicted_noise, cfg_scale)
+
+                alpha = self.alpha[t][:, None, None, None]
+                alpha_hat = self.alpha_hat[t][:, None, None, None]
+                beta = self.beta[t][:, None, None, None]
+
+                if i > 0:
+                    noise = torch.randn_like(x)
+                else:
+                    noise = torch.zeros_like(x)
+                x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise)\
+                    + torch.sqrt(beta) * noise
+
+        model.train()
+        x = (x.clamp(-1, 1) + 1) / 2
+        x = (x * 255).type(torch.uint8)
+        return x
+
     def inpainting(self, model, n, image_path, mask_path):
         """
         Function inpaints selected image in specific mask
@@ -151,6 +181,55 @@ class Diffusion:
         x = (x * 255).type(torch.uint8)
         return x
 
+    def inpaint_conditional(self, model, n, labels, image_path, mask_path, cfg_scale=3):
+        transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((32, 32)),
+            torchvision.transforms.ToTensor(),
+        ])
+        transforms = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((32, 32)),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        image = Image.open(image_path).convert("RGB")
+        mask = Image.open(mask_path).convert("RGB")
+
+        image_tensor = transforms(image).unsqueeze(0).to(self.device)
+        mask_tensor = transform(mask).unsqueeze(0).to(self.device)
+        mask_tensor = (1 - mask_tensor)
+
+        model.eval()
+        with torch.no_grad():
+            x = torch.randn((n, 3, self.image_size, self.image_size)).to(self.device)
+            for i in tqdm(reversed(range(0, self.noise_steps)), total=1000, position=0):
+                noised = self.noise_images(image_tensor, torch.tensor([i]))[0]
+                x = x * mask_tensor + noised.to(self.device) * (1 - mask_tensor)
+
+                t = (torch.ones(n) * i).long().to(self.device)
+                predicted_noise = model(x, t, labels)
+
+                if cfg_scale > 0:
+                    uncond_predicted_noise = model(x, t, None)
+                    predicted_noise = torch.lerp(uncond_predicted_noise, predicted_noise, cfg_scale)
+
+                alpha = self.alpha[t][:, None, None, None]
+                alpha_hat = self.alpha_hat[t][:, None, None, None]
+                beta = self.beta[t][:, None, None, None]
+
+                if i > 0:
+                    noise = torch.randn_like(x)
+                else:
+                    noise = torch.zeros_like(x)
+
+                x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise)\
+                    + torch.sqrt(beta) * noise
+
+        model.train()
+        x = (x.clamp(-1, 1) + 1) / 2
+        x = (x * 255).type(torch.uint8)
+        return x
+
 
 def train(args):
     """
@@ -193,6 +272,59 @@ def train(args):
         torch.save(model.state_dict(), os.path.join("models", args.run_name, f"checkpoint.pt"))
 
 
+def train_conditional(args):
+    setup_logging(args.run_name)
+    device = args.device
+    dataloader = get_data(args)
+    model = UNetConditional(num_classes=args.conditional, image_size=args.image_size).to(device)
+    ema_model = copy.deepcopy(model).eval().requires_grad_(False)
+    starting_epoch = 0
+
+    if args.training_continue:
+        ckpt = torch.load(args.checkpoint)
+        ema_ckpt = torch.load(args.ema)
+        model.load_state_dict(ckpt)
+        ema_ckpt = torch.load(ema_ckpt)
+        ema_model.load_state_dict(ema_ckpt)
+        starting_epoch = int(args.epoch_continue)
+
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr)
+    mse = nn.MSELoss()
+    diffusion = Diffusion(image_size=args.image_size, device=device)
+    ema = EMA(0.995)
+
+    for epoch in range(starting_epoch, starting_epoch + args.epochs, 1):
+        pbar = tqdm(dataloader, desc=f"Epoch {epoch}", colour="green")
+        for i, (images, labels) in enumerate(pbar):
+            images = images.to(device)
+            labels = labels.to(device)
+            t = diffusion.sample_time_steps(images.shape[0]).to(device)
+            x_t, noise = diffusion.noise_images(images, t)
+            if np.random.random() < 0.1:
+                labels = None
+            predicted_noise = model(x_t, t, labels)
+            loss = mse(noise, predicted_noise)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            ema.step_ema(ema_model, model)
+
+            pbar.set_postfix(MSE=loss.item())
+
+        if epoch % args.save_epoch == 0 and epoch != 0:
+            labels = torch.arange(args.conditional).long().to(device)
+            sampled_images = diffusion.sample_conditional(model, n=len(labels), labels=labels)
+            ema_sampled_images = diffusion.sample_conditional(ema_model, n=len(labels), labels=labels)
+            save_images(sampled_images, os.path.join("results", args.run_name, f"{epoch}.jpg"))
+            save_images(ema_sampled_images, os.path.join("results", args.run_name, f"{epoch}_ema.jpg"))
+            torch.save(ema_model.state_dict(), os.path.join("models", args.run_name, f"ckpt{epoch}_ema.pt"))
+            # torch.save(optimizer.state_dict(), os.path.join("models", args.run_name, f"optim{epoch}.pt"))
+            torch.save(model.state_dict(), os.path.join("models", args.run_name, f"ckpt{epoch}.pt"))
+        torch.save(model.state_dict(), os.path.join("models", args.run_name, f"ckpt.pt"))
+        torch.save(ema_model.state_dict(), os.path.join("models", args.run_name, f"ema_ckpt.pt"))
+
+
 def sample(model_dict, n, device, save, image_size):
     """
     Function prepares all necessities for sampling, launch sampling and plots results
@@ -210,6 +342,26 @@ def sample(model_dict, n, device, save, image_size):
     if save != "":
         save_images(sampled_images, save)
     plot_images(sampled_images)
+
+
+def sample_conditional(arguments):
+    """
+    Function prepares all necessities for conditional sampling, launch it and plots results
+    :param arguments: All necessary arguments are described in sample_cond.py
+    """
+    model = UNetConditional(num_classes=arguments.classes, image_size=arguments.image_size).to(arguments.device)
+    ckpt = torch.load(arguments.path)
+    model.load_state_dict(ckpt)
+    diffusion = Diffusion(image_size=arguments.image_size, device=arguments.device)
+    if arguments.images:
+        labels = torch.Tensor([arguments.images[1]] * arguments.images[0]).long().to(arguments.device)
+        x = diffusion.sample_conditional(model, n=arguments.images[0], labels=labels, cfg_scale=3)
+    else:
+        labels = torch.arange(arguments.classes).long().to(arguments.device)
+        x = diffusion.sample_conditional(model, n=len(labels), labels=labels, cfg_scale=3)
+    if arguments.save != "":
+        save_images(x, arguments.save)
+    plot_images(x)
 
 
 def inpaint(model_dict, n, device, save, image_size, image, mask):
@@ -233,9 +385,31 @@ def inpaint(model_dict, n, device, save, image_size, image, mask):
     plot_images(inpainted_images)
 
 
+def inpaint_conditional(arguments):
+    """
+    Function prepares all necessities for conditional inpainting, launch it and plots results
+    :param arguments: All necessary arguments are described in sample_cond.py
+    """
+    model = UNetConditional(num_classes=arguments.classes, image_size=arguments.image_size).to(arguments.device)
+    ckpt = torch.load(arguments.path)
+    model.load_state_dict(ckpt)
+    diffusion = Diffusion(image_size=arguments.image_size, device=arguments.device)
+    if arguments.images:
+        labels = torch.Tensor([arguments.images[1]] * arguments.images[0]).long().to(arguments.device)
+        x = diffusion.inpaint_conditional(model, n=arguments.images[0], labels=labels, image_path=arguments.inpainting[0],
+                                          mask_path=arguments.inpainting[1], cfg_scale=3)
+    else:
+        labels = torch.arange(arguments.classes).long().to(arguments.device)
+        x = diffusion.inpaint_conditional(model, n=len(labels), labels=labels, image_path=arguments.inpainting[0],
+                                          mask_path=arguments.inpainting[1], cfg_scale=3)
+    if arguments.save != "":
+        save_images(x, arguments.save)
+    plot_images(x)
+
+
 def start_training(arguments):
     """
-    Function sets few additional arguments for training and launches traning loop
+    Function sets few additional arguments for training and launches training loop
     :param arguments: Arguments for training (described in train.py)
     """
     if arguments.continue_training:
@@ -254,3 +428,29 @@ def start_training(arguments):
         arguments.device = "cpu"
 
     train(arguments)
+
+
+def start_training_conditional(arguments):
+    """
+    Function sets few additional arguments for conditional training and launches training loop
+    :param arguments: Arguments for training (described in train.py)
+    """
+    if arguments.continue_training:
+        arguments.training_continue = True
+        continue_epoch, checkpoint_file = arguments.continue_training
+        arguments.epoch_continue = continue_epoch
+        arguments.checkpoint = checkpoint_file
+        ema = checkpoint_file.split(".pt")[0]
+        ema += "_ema.pt"
+        arguments.ema = ema
+    else:
+        arguments.training_continue = False
+
+    arguments.lr = 3e-4
+
+    if arguments.cuda:
+        arguments.device = "cuda"
+    else:
+        arguments.device = "cpu"
+
+    train_conditional(arguments)

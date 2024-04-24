@@ -1,11 +1,11 @@
 # KNN project - Diffusion model
 # Script for better training launching
 # Created by Lukas Marek
-# 18.4.2024
+# 24.4.2024
 
 import os
 import argparse
-from ddm import start_training
+from ddm import start_training, start_training_conditional
 
 
 def create_parser():
@@ -18,8 +18,9 @@ def create_parser():
                         help="Continue training from a checkpoint")
     parser.add_argument("--image_size", type=int, help="Image size for training", default=64)
     parser.add_argument("--batch_size", type=int, help="Batch size for training", default=6)
-    parser.add_argument("--save_epoch", type=int, help="Batch size for training", default=25)
+    parser.add_argument("--save_epoch", type=int, help="Epoch when to save progress", default=25)
     parser.add_argument("--cuda", action="store_true", help="Enable CUDA for GPU acceleration", default=False)
+    parser.add_argument("--conditional", type=int, help="To train class dependent model, number of classes")
 
     return parser
 
@@ -43,9 +44,9 @@ if __name__ == '__main__':
     if arguments.continue_training:
         continue_epoch, checkpoint_file = arguments.continue_training
         check_model()
-        print(f"--- Continuing training from epoch {continue_epoch} with checkpoint file {checkpoint_file} ---")
+        print(f"<--- Continuing training from epoch {continue_epoch} with checkpoint file {checkpoint_file} --->")
     else:
-        print("--- Starting new training ---")
+        print("<--- Starting new training --->")
 
     if not os.path.exists(arguments.dataset_path):
         print(f"Dataset folder {arguments.dataset_path} does not exist.")
@@ -53,12 +54,18 @@ if __name__ == '__main__':
 
     dataset = arguments.dataset_path.split("/")[-1]
     print("Dataset:", dataset)
+    if arguments.conditional:
+        print("Classes:", arguments.conditional)
     print("Epochs:", arguments.epochs)
     print("Name:", arguments.run_name)
     print("Image size:", arguments.image_size)
     print("Batch size:", arguments.batch_size)
     print("Save epoch:", arguments.save_epoch)
     print("CUDA Enabled:", arguments.cuda)
-    print("-------------------------------")
+    print("<------------------------------->")
+
+    if arguments.conditional:
+        start_training_conditional(arguments)
+        exit(0)
 
     start_training(arguments)
