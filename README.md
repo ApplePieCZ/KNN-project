@@ -118,10 +118,13 @@ Other arguments are the same as for sampling with DiT.
 ### Results
 ***
 
-Inpainting with resampling on Landscapes works perfectly. For example to remove this pier. Basic inpaint fails terribly, but resample makes final image look really convincing.
+Inpainting with resampling on Landscapes works perfectly. For removing pier or palm basic inpaint fails terribly, but 10 resample steps makes final image look really convincing.
 
 <p align="center">
 <img src="Visuals/landscapeinpaint.png" width="50%" >
+</p>
+<p align="center">
+<img src="Visuals/landscapeinpaint2.png" width="50%" >
 </p>
 
 Inpainting on Cifar datatset works too, but on such small resolution it is pointless. Example instead of pier, inpaint car.
@@ -148,6 +151,14 @@ With enabled resampling the result is much better. Resample steps are 1, 3 and 4
 <img src="Visuals/sampleRe1.png" width="32%">
 <img src="Visuals/sampleRe3.png" width="32%">
 <img src="Visuals/sampleRe4.png" width="32%">
+</p>
+
+If the classes are similliar (retriever and brown bear), model can adapt itself and merge those two. But if the classes are a lot apart (retriever and black bear), model just creates new animal inside dog. And for reversed mask, output is straight terrible.
+
+<p align="center">
+<img src="Visuals/dogbear.png" width="32%">
+<img src="Visuals/beardog2.png" width="32%">
+<img src="Visuals/beartodog.png" width="32%">
 </p>
 
 Because **DiT** works in latent space there is no need for lot of resamoling steps. 3-4 are best.
