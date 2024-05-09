@@ -1,5 +1,13 @@
 # KNN-project
-Project about image generating and inpainting using diffusion models.
+
+## Dependencies
+- Torch >=2.1.2
+- Torchvision >=0.16.2
+- PIL >=9.3.0
+- Matplotlib >=3.8.2
+
+For GPU acceleration CUDA must be installed too. Simple PyTorch installation is from https://pytorch.org/get-started/locally/.
+
 
 ## Image generation
 
@@ -88,14 +96,13 @@ Because of the hardware limitations Cifar10 was trained on 32x32 dataset instead
 
 ## Inpainting
 
-We implemented inpainting post condition inpainting solution with resampling based on this 
-[paper](https://arxiv.org/pdf/2201.09865.pdf).
+We implemented post condition inpainting solution with resampling based on this [paper](https://arxiv.org/pdf/2201.09865.pdf).
 
 Inpainting with resampling was implemented on:
-- [x] Our Denoising Diffusion model
+- [x] DDPM
 - [x] [DiT](https://github.com/facebookresearch/DiT)
 
-Inpainting on our model can be run with following command:
+Inpainting on DDPM can be run with following command:
 
     $ python3 sample.py <path to model> --inpainting <path to image> <path to mask>
 
